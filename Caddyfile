@@ -1,0 +1,71 @@
+# Caddy config for the public Render edge of the LLM gateway.
+# Render terminates TLS upstream, so auto_https stays off.
+# All public traffic must carry `Authorization: Bearer $LLM_API_TOKEN`
+# except the /health probe (Render orchestration) and CORS preflights.
+#
+# CORS uses Access-Control-Allow-Origin: * because the resource is bearer-
+# token-gated — anyone with the token can call it from anywhere, so the
+# CORS check adds no security beyond what the bearer already enforces. We
+# explicitly do NOT set Access-Control-Allow-Credentials, which keeps the
+# wildcard origin valid (browsers only reject `*` when credentials: 'include').
+
+{
+    auto_https off
+}
+
+:{$PORT:10000} {
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+        # CORS — applied to every response, including 401s.
+        Access-Control-Allow-Origin "*"
+        Access-Control-Allow-Methods "POST, GET, OPTIONS"
+        Access-Control-Allow-Headers "Authorization, Content-Type"
+        Access-Control-Max-Age "86400"
+    }
+
+    # Render orchestration probe — always open.
+    handle /health {
+        respond "OK" 200
+    }
+
+    # CORS preflight — must answer before the auth check, or the browser
+    # never sends the real request.
+    @preflight method OPTIONS
+    handle @preflight {
+        respond "" 204
+    }
+
+    # Authenticated traffic flows through the Tailscale tunnel to the
+    # laptop running Ollama at $LLM_BACKEND (e.g. 100.x.y.z:11434).
+    @authorized header Authorization "Bearer {$LLM_API_TOKEN}"
+    handle @authorized {
+        reverse_proxy {$LLM_BACKEND} {
+            header_up Host {host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+
+            # Ollama's first response after a model load can take 30-120s.
+            # Caddy's 30s default would 502 mid-stream — raise the ceiling.
+            transport http {
+                read_timeout 300s
+                write_timeout 300s
+                dial_timeout 10s
+            }
+        }
+    }
+
+    handle {
+        respond "Unauthorized" 401 {
+            close
+        }
+    }
+
+    log {
+        output stdout
+        format json
+    }
+}
