@@ -16,6 +16,14 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     numInstances: 1
+
+    # Build-time arg flowed into Dockerfile's ARG TAILSCALE_VERSION.
+    # Bump this when the Tailscale admin console flags a newer release
+    # (https://pkgs.tailscale.com/stable/ — pick the latest stable amd64
+    # version) and push to redeploy.
+    dockerBuildArgs:
+      TAILSCALE_VERSION: 1.96.4
+
     envVars:
       # ----- secrets (set in the Render dashboard, never committed) -----
       - key: TAILSCALE_AUTHKEY # reusable Tailscale auth key
