@@ -44,7 +44,11 @@
     @authorized header Authorization "Bearer {$LLM_API_TOKEN}"
     handle @authorized {
         reverse_proxy {$LLM_BACKEND} {
-            header_up Host {host}
+            # Override Host with the literal upstream so Ollama's anti-DNS-
+            # rebinding origin-check sees a "trusted" host. Without this,
+            # Ollama returns 301/403 because the original Host header is
+            # the public Render hostname.
+            header_up Host "localhost:11434"
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
 
