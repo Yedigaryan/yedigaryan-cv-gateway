@@ -10,7 +10,7 @@ services:
   - type: web
     name: cv-llm-gateway
     env: docker
-    region: ohio          # nearest free region; change if your laptop is closer to another
+    region: ohio # nearest free region; change if your laptop is closer to another
     plan: free
     rootDir: gateway
     dockerfilePath: ./Dockerfile
@@ -18,11 +18,11 @@ services:
     numInstances: 1
     envVars:
       # ----- secrets (set in the Render dashboard, never committed) -----
-      - key: TAILSCALE_AUTHKEY     # reusable Tailscale auth key
+      - key: TAILSCALE_AUTHKEY # reusable Tailscale auth key
         sync: false
-      - key: LLM_BACKEND           # "<MacBook tailnet IP>:11434" — Ollama default
+      - key: LLM_BACKEND # "<MacBook tailnet IP>:11434" — Ollama default
         sync: false
-      - key: LLM_API_TOKEN         # `openssl rand -hex 32`
+      - key: LLM_API_TOKEN # `openssl rand -hex 32`
         sync: false
       # ----- non-secret -----
       - key: PORT
