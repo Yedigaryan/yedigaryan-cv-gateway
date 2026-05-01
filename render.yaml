@@ -1,0 +1,29 @@
+# Render Blueprint — defines the public-edge LLM gateway only.
+# The Next.js static site (out/) is hosted on name.am via Apache and is NOT
+# managed by Render.
+#
+# Apply by visiting: https://dashboard.render.com/select-repo?type=blueprint
+# and pointing it at this repository. Render reads this file and provisions
+# the service. Set the three secrets in the dashboard after the first apply.
+
+services:
+  - type: web
+    name: cv-llm-gateway
+    env: docker
+    region: ohio          # nearest free region; change if your laptop is closer to another
+    plan: free
+    rootDir: gateway
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    numInstances: 1
+    envVars:
+      # ----- secrets (set in the Render dashboard, never committed) -----
+      - key: TAILSCALE_AUTHKEY     # reusable Tailscale auth key
+        sync: false
+      - key: LLM_BACKEND           # "<MacBook tailnet IP>:11434" — Ollama default
+        sync: false
+      - key: LLM_API_TOKEN         # `openssl rand -hex 32`
+        sync: false
+      # ----- non-secret -----
+      - key: PORT
+        value: 10000
