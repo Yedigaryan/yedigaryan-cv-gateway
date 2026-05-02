@@ -3,9 +3,15 @@
 Public-edge LLM gateway: **Caddy + Tailscale (userspace)** in a single
 Alpine Docker image, deployed to Render Free.
 
-> Last redeploy trigger: **2026-05-02**.
+> Last redeploy trigger: **2026-05-02 — explicit `forward_proxy_url` for Caddy reverse_proxy + admin API off + Tailscale 1.96.4**.
 > Bump this date and `git push` to force Render to rebuild the container,
 > which mints a fresh Tailscale identity (new `100.x.y.z` IP) on boot.
+>
+> The Tailscale binary is pinned via `TAILSCALE_VERSION` in
+> [`../render.yaml`](../render.yaml) (default in `Dockerfile`'s `ARG`).
+> When the admin console flags a vulnerability, check
+> <https://pkgs.tailscale.com/stable/> for the newest amd64 release, bump
+> the `dockerBuildArgs.TAILSCALE_VERSION` value, and push.
 
 The gateway is **not** an LLM — it's a thin reverse proxy. Public requests
 terminate at Caddy, must carry `Authorization: Bearer $LLM_API_TOKEN`, and
@@ -16,7 +22,7 @@ on `$LLM_BACKEND` (in this setup: Ollama on the M1 Pro).
 
 | File             | Role                                                                      |
 | ---------------- | ------------------------------------------------------------------------- |
-| `Dockerfile`     | Multi-stage Alpine build. Pulls Caddy from `caddy:2-alpine`, layers in `tailscale` + `libcap`. Strips `cap_net_bind_service` from the Caddy binary because Render's free-tier sandbox refuses to exec binaries with raised capabilities. |
+| `Dockerfile`     | Multi-stage Alpine build. Pulls Caddy from `caddy:2-alpine`, downloads Tailscale's official static binary at the version pinned by the `TAILSCALE_VERSION` build arg (we deliberately do *not* use Alpine's `tailscale` package — it lags upstream and triggers the admin-console security banner). Strips `cap_net_bind_service` from the Caddy binary because Render's free-tier sandbox refuses to exec binaries with raised capabilities. |
 | `Caddyfile`      | Three handlers in order: `/health` open · OPTIONS preflight 204 with CORS · bearer-gated `reverse_proxy` to `{$LLM_BACKEND}`. Sends `Host: localhost:11434` to upstream so Ollama's anti-DNS-rebinding origin check doesn't reject. |
 | `run.sh`         | Entrypoint. Boots `tailscaled` in userspace mode (SOCKS5 on `localhost:1055`), `tailscale up` with `$TAILSCALE_AUTHKEY`, waits for an IP lease, exports `ALL_PROXY=socks5://localhost:1055` so Caddy's reverse_proxy dials over the tunnel, then `exec caddy run`. |
 | `.dockerignore`  | Skips Markdown — README never enters the image.                           |

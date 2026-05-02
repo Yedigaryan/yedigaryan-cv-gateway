@@ -61,9 +61,20 @@
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
 
-            # Ollama's first response after a model load can take 30-120s.
-            # Caddy's 30s default would 502 mid-stream — raise the ceiling.
             transport http {
+                # CRITICAL — route every upstream dial through Tailscale's
+                # userspace HTTP-CONNECT proxy on localhost:1056 (started
+                # by `tailscaled --outbound-http-proxy-listen` in run.sh).
+                # Caddy's reverse_proxy does NOT honor ALL_PROXY/HTTP_PROXY
+                # env vars — it uses its own transport. Without this line,
+                # Caddy tries to dial the tailnet IP via the container's
+                # default route, which has no path to 100.x.y.z and 502s
+                # in ~1ms.
+                forward_proxy_url http://localhost:1056
+
+                # Ollama's first response after a model load can take 30-
+                # 120s. Caddy's 30s default would 502 mid-stream — raise
+                # the ceiling.
                 read_timeout 300s
                 write_timeout 300s
                 dial_timeout 10s
