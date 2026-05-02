@@ -10,7 +10,16 @@
 # wildcard origin valid (browsers only reject `*` when credentials: 'include').
 
 {
+    # Render terminates TLS upstream — Caddy must not bind 80/443.
     auto_https off
+
+    # Disable Caddy's admin API entirely. We configure the gateway
+    # statically through this file; runtime config changes via the REST
+    # admin endpoint are not used. Disabling it stops the trickle of
+    # `admin.api` "host not allowed" 403s from external port scanners and
+    # removes a small attack surface. To re-enable for live debugging:
+    # comment this line out and `kubectl exec`/Render-shell to localhost:2019.
+    admin off
 }
 
 :{$PORT:10000} {
