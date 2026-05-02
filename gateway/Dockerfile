@@ -20,9 +20,14 @@ ARG TAILSCALE_VERSION=1.96.4
 # libcap → setcap (we strip Caddy's NET_BIND_SERVICE cap below).
 # iptables/ip6tables → only relevant when tailscaled runs in TUN mode,
 #   but lightweight enough to keep for parity with the upstream package.
+# socat → TCP-to-HTTP-CONNECT bridge. Caddy's reverse_proxy can't dial
+#   tailnet IPs directly (Tailscale runs in userspace mode, no kernel
+#   route to 100.x.y.z) and has no Caddyfile directive to use a forward
+#   proxy. socat listens on a local port and tunnels each connection
+#   through Tailscale's HTTP-CONNECT proxy at localhost:1056.
 # We deliberately do NOT install Alpine's `tailscale` package — it lags
 # upstream by weeks and is what triggers the security-update banner.
-RUN apk add --no-cache ca-certificates iptables ip6tables bash curl libcap
+RUN apk add --no-cache ca-certificates iptables ip6tables bash curl libcap socat
 
 # Install Tailscale from the official static binary tarball, pinned by
 # version. Bump TAILSCALE_VERSION above and rebuild to update.

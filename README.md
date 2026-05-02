@@ -3,7 +3,7 @@
 Public-edge LLM gateway: **Caddy + Tailscale (userspace)** in a single
 Alpine Docker image, deployed to Render Free.
 
-> Last redeploy trigger: **2026-05-02 — explicit `forward_proxy_url` for Caddy reverse_proxy + admin API off + Tailscale 1.96.4**.
+> Last redeploy trigger: **2026-05-02 — socat sidecar bridges Caddy → Tailscale HTTP-CONNECT (replaces failed Caddy `proxy_url` attempt) + admin API off + Tailscale 1.96.4**.
 > Bump this date and `git push` to force Render to rebuild the container,
 > which mints a fresh Tailscale identity (new `100.x.y.z` IP) on boot.
 >
