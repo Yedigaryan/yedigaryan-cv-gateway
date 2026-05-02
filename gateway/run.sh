@@ -45,10 +45,42 @@ done
 log "Tailnet IP: $(tailscale ip -4 || echo NONE)"
 
 # Route all of Caddy's outbound HTTP through Tailscale's local proxies.
+# (Note: Caddy's reverse_proxy ignores these — they're set for any other
+# tools we might shell out to.)
 export ALL_PROXY=socks5://localhost:1055
 export HTTP_PROXY=http://localhost:1056
 export HTTPS_PROXY=http://localhost:1056
 export NO_PROXY=localhost,127.0.0.1
+
+# --- Boot-time diagnostics ----------------------------------------------
+# Print three reachability checks to stdout so the Render logs show, on
+# every cold start, whether each layer of the upstream chain works:
+#   D1) Can `tailscale ping` reach the laptop tailnet IP at all?
+#   D2) Does the HTTP-CONNECT proxy on :1056 actually relay traffic?
+#   D3) Does Ollama answer when reached via the proxy?
+# If $LLM_BACKEND is unset (e.g. running locally without Render env vars),
+# skip the laptop-specific checks.
+log "--- diagnostics ---"
+if [ -n "$LLM_BACKEND" ]; then
+    LAPTOP_IP="${LLM_BACKEND%%:*}"
+    log "D1: tailscale ping ${LAPTOP_IP} ..."
+    tailscale ping --c=1 --timeout=5s "$LAPTOP_IP" 2>&1 | head -3 | sed 's/^/    /'
+
+    log "D2: curl http://${LLM_BACKEND}/api/tags via Tailscale HTTP proxy (localhost:1056) ..."
+    curl --max-time 8 -x http://localhost:1056 -sS -o /dev/null \
+         -w "    -> HTTP %{http_code} in %{time_total}s\n" \
+         "http://${LLM_BACKEND}/api/tags" \
+         || log "    -> proxy curl failed"
+
+    log "D3: curl http://${LLM_BACKEND}/api/tags via SOCKS5 (localhost:1055) ..."
+    curl --max-time 8 --socks5 localhost:1055 -sS -o /dev/null \
+         -w "    -> HTTP %{http_code} in %{time_total}s\n" \
+         "http://${LLM_BACKEND}/api/tags" \
+         || log "    -> socks5 curl failed"
+else
+    log "(skipping D1/D2/D3 — LLM_BACKEND not set in env)"
+fi
+log "--- end diagnostics ---"
 
 log "Launching Caddy..."
 exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile

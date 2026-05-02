@@ -69,8 +69,9 @@
                 # env vars — it uses its own transport. Without this line,
                 # Caddy tries to dial the tailnet IP via the container's
                 # default route, which has no path to 100.x.y.z and 502s
-                # in ~1ms.
-                forward_proxy_url http://localhost:1056
+                # in ~1ms. The Caddyfile directive name is `proxy_url`
+                # (maps to HTTPTransport.Proxy in Caddy's source).
+                proxy_url http://localhost:1056
 
                 # Ollama's first response after a model load can take 30-
                 # 120s. Caddy's 30s default would 502 mid-stream — raise
