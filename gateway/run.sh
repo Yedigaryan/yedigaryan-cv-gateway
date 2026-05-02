@@ -93,8 +93,19 @@ if [ -n "$LLM_BACKEND" ]; then
          -w "    -> HTTP %{http_code} in %{time_total}s\n" \
          "http://localhost:18080/api/tags" \
          || log "    -> socat curl failed"
+
+    log "D5: raw HTTP CONNECT to localhost:1056 -> $LLM_BACKEND ..."
+    {
+        printf 'CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n' "$LLM_BACKEND" "$LLM_BACKEND"
+        sleep 1
+    } | timeout 6 nc -w 6 localhost 1056 2>&1 | head -3 | sed 's/^/    /' \
+        || log "    -> raw CONNECT failed"
+
+    log "socat log so far:"
+    [ -f /tmp/socat.log ] && tail -n 20 /tmp/socat.log | sed 's/^/    /' \
+        || log "    (no socat log yet)"
 else
-    log "(skipping D1-D4 — LLM_BACKEND not set in env)"
+    log "(skipping D1-D5 — LLM_BACKEND not set in env)"
 fi
 log "--- end diagnostics ---"
 

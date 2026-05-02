@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd user-agent template for running Ollama on the M1 Pro as a
+  background service that survives logout/reboot.
+
+  Install:
+    # Disable the Ollama desktop app's own LaunchAgent so it doesn't fight us.
+    launchctl bootout "gui/$(id -u)/com.ollama.ollama" 2>/dev/null
+    osascript -e 'tell application "Ollama" to quit' 2>/dev/null
+    pkill -9 -x ollama 2>/dev/null
+
+    cp ollama/dev.local.ollama.plist ~/Library/LaunchAgents/
+    chmod 644 ~/Library/LaunchAgents/dev.local.ollama.plist
+    xattr -c   ~/Library/LaunchAgents/dev.local.ollama.plist
+
+    launchctl bootout    "gui/$(id -u)/dev.local.ollama" 2>/dev/null
+    launchctl bootstrap  "gui/$(id -u)" ~/Library/LaunchAgents/dev.local.ollama.plist
+    launchctl enable     "gui/$(id -u)/dev.local.ollama"
+    launchctl kickstart -k "gui/$(id -u)/dev.local.ollama"
+
+  Verify the listener is on the tailnet interface (look for *.11434, NOT 127.0.0.1.11434):
+    lsof -nP -iTCP:11434 -sTCP:LISTEN
+
+  Path note: the default below (/usr/local/bin/ollama) is what the Ollama
+  desktop installer creates on every Mac — Intel or Apple Silicon. If you
+  installed Ollama via Homebrew on Apple Silicon instead, `which ollama`
+  will print /opt/homebrew/bin/ollama; swap that into the ProgramArguments
+  array below.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>dev.local.ollama</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/ollama</string>
+        <string>serve</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- 0.0.0.0 so the Tailscale (utun*) interface can accept inbound. -->
+        <key>OLLAMA_HOST</key>
+        <string>0.0.0.0:11434</string>
+        <!-- Disable Ollama's anti-DNS-rebinding Host-header allowlist. The
+             reverse proxy on Render forwards requests with the public host
+             name; without "*" Ollama 301/403s those calls. Safe here because
+             the upstream port is reachable only via the tailnet, and the
+             public edge is bearer-token-gated by Caddy. -->
+        <key>OLLAMA_ORIGINS</key>
+        <string>*</string>
+        <!-- Keep model resident in VRAM 30 minutes between requests. -->
+        <key>OLLAMA_KEEP_ALIVE</key>
+        <string>30m</string>
+        <!-- Cap concurrent requests so the laptop stays usable while serving. -->
+        <key>OLLAMA_NUM_PARALLEL</key>
+        <string>2</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/ollama.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/ollama.err.log</string>
+</dict>
+</plist>

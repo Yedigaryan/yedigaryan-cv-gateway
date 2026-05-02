@@ -70,6 +70,13 @@
                 read_timeout 300s
                 write_timeout 300s
                 dial_timeout 10s
+
+                # Disable upstream HTTP keepalive — each request gets a
+                # fresh TCP connection through socat. Without this Caddy
+                # would try to reuse a previously-tunneled connection,
+                # which the HTTP-CONNECT proxy semantics don't support
+                # (one CONNECT = one TCP stream).
+                keepalive off
             }
         }
     }
