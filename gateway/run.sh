@@ -77,7 +77,13 @@ if [ -n "$LLM_BACKEND" ]; then
     # The socksport= option is SOCKS4/4A-only — using it on SOCKS5-CONNECT
     # makes each forked child die at parse time with:
     #   parseopts_table(): option "socksport" not supported with this address type
-    socat -d -d -lf /tmp/socat.log \
+    #
+    # `--experimental` is required: socat 1.8.x ships SOCKS5-CONNECT
+    # behind the experimental flag and refuses to use it without explicit
+    # opt-in. SOCKS4A is the non-experimental alternative but Tailscale's
+    # `--socks5-server` only speaks SOCKS5, not SOCKS4 — so SOCKS5 is
+    # what we have to use.
+    socat -d -d --experimental -lf /tmp/socat.log \
         "TCP-LISTEN:18080,fork,reuseaddr,bind=127.0.0.1" \
         "SOCKS5-CONNECT:localhost:1055:${LLM_BACKEND%%:*}:${LLM_BACKEND##*:}" &
     sleep 1

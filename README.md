@@ -4,12 +4,13 @@ Public-edge LLM gateway for [davit.yedigaryan.pro](https://davit.yedigaryan.pro)
 on-page chat widget. **Caddy + Tailscale (userspace)** in a single Alpine
 Docker image, deployed to Render Free.
 
-> Last redeploy trigger: **2026-05-04 — fix SOCKS5-CONNECT syntax:
-> SOCKS port is positional, not the SOCKS4-style `,socksport=` option
-> (which crashed every forked child with `parseopts_table` error).
-> Earlier: switched socat from HTTP-CONNECT to SOCKS5; verbosity `-d -d`;
-> sidecar replaced Caddy `proxy_url`; admin API off; Tailscale 1.96.4;
-> `keepalive off`; boot diagnostics D1–D5 + socat-log surfacing**.
+> Last redeploy trigger: **2026-05-04 — add socat `--experimental` flag
+> (socat 1.8.x ships SOCKS5-CONNECT behind opt-in; without it every
+> forked child died with `use option --experimental to acknowledge
+> unmature state`). Earlier: SOCKS port positional in SOCKS5-CONNECT
+> URL (not SOCKS4-style `,socksport=`); switched socat from HTTP-CONNECT
+> to SOCKS5; verbosity `-d -d`; sidecar replaced Caddy `proxy_url`;
+> admin API off; Tailscale 1.96.4; `keepalive off`; D1–D5 diagnostics**.
 >
 > Bump this date and `git push` to force Render to rebuild the container,
 > which mints a fresh Tailscale identity (new `100.x.y.z` IP) on boot.
