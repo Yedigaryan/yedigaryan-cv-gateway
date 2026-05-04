@@ -71,7 +71,7 @@ export NO_PROXY=localhost,127.0.0.1
 # `-d -d` raises socat to info-level logging so /tmp/socat.log captures
 # every connection accept + tunnel result, not just fatal errors.
 if [ -n "$LLM_BACKEND" ]; then
-    log "Starting socat: localhost:18080 -> SOCKS5 (localhost:1055) -> $LLM_BACKEND ..."
+    log "Starting socat: localhost:18080 -> SOCKS5 (127.0.0.1:1055) -> $LLM_BACKEND ..."
     # SOCKS5-CONNECT address takes FOUR positional values:
     #   SOCKS5-CONNECT:<socks-server>:<socks-port>:<target-host>:<target-port>
     # The socksport= option is SOCKS4/4A-only — using it on SOCKS5-CONNECT
@@ -83,9 +83,15 @@ if [ -n "$LLM_BACKEND" ]; then
     # opt-in. SOCKS4A is the non-experimental alternative but Tailscale's
     # `--socks5-server` only speaks SOCKS5, not SOCKS4 — so SOCKS5 is
     # what we have to use.
+    #
+    # We hardcode 127.0.0.1 (not "localhost") for the SOCKS5 server: the
+    # Render container's `localhost` resolves to ::1 first, but Tailscale
+    # binds `--socks5-server=localhost:1055` to IPv4 only. socat doesn't
+    # fall back from IPv6 → IPv4 the way curl does, so it would error
+    # out with `connect [::1]:1055: Connection refused` on every child.
     socat -d -d --experimental -lf /tmp/socat.log \
         "TCP-LISTEN:18080,fork,reuseaddr,bind=127.0.0.1" \
-        "SOCKS5-CONNECT:localhost:1055:${LLM_BACKEND%%:*}:${LLM_BACKEND##*:}" &
+        "SOCKS5-CONNECT:127.0.0.1:1055:${LLM_BACKEND%%:*}:${LLM_BACKEND##*:}" &
     sleep 1
 fi
 
