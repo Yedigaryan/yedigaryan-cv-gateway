@@ -54,15 +54,27 @@ export NO_PROXY=localhost,127.0.0.1
 # Caddy's reverse_proxy can't reach tailnet IPs because Tailscale runs in
 # userspace mode and Caddy's transport ignores ALL_PROXY. socat opens a
 # local TCP listener on :18080 and, for each connection, dials Tailscale's
-# HTTP-CONNECT proxy (localhost:1056) and issues `CONNECT <LLM_BACKEND>`.
+# SOCKS5 proxy (localhost:1055) and asks it to connect to ${LLM_BACKEND}.
 # Caddy's Caddyfile then reverse_proxies to localhost:18080 — a normal
 # direct dial inside the container — and the bytes flow through the
 # tunnel transparently.
+#
+# We use SOCKS5 (not HTTP-CONNECT on :1056) because:
+#   1. D3 boot diagnostic confirmed SOCKS5 round-trips through Tailscale.
+#   2. socat 1.7.x's HTTP-CONNECT (PROXY:) silently failed against
+#      Tailscale's :1056 — connections accepted then dropped without
+#      bytes (D4 saw "Empty reply from server"). Alpine 3.20 ships
+#      socat 1.8.0 which has native SOCKS5-CONNECT, no such issue.
+#   3. SOCKS5 binary protocol is unambiguous; no HTTP version / Host /
+#      Content-Length quirks between client and server.
+#
+# `-d -d` raises socat to info-level logging so /tmp/socat.log captures
+# every connection accept + tunnel result, not just fatal errors.
 if [ -n "$LLM_BACKEND" ]; then
-    log "Starting socat: localhost:18080 -> HTTP-CONNECT (localhost:1056) -> $LLM_BACKEND ..."
-    socat -d -lf /tmp/socat.log \
+    log "Starting socat: localhost:18080 -> SOCKS5 (localhost:1055) -> $LLM_BACKEND ..."
+    socat -d -d -lf /tmp/socat.log \
         "TCP-LISTEN:18080,fork,reuseaddr,bind=127.0.0.1" \
-        "PROXY:localhost:${LLM_BACKEND%%:*}:${LLM_BACKEND##*:},proxyport=1056" &
+        "SOCKS5-CONNECT:localhost:${LLM_BACKEND%%:*}:${LLM_BACKEND##*:},socksport=1055" &
     sleep 1
 fi
 

@@ -4,10 +4,11 @@ Public-edge LLM gateway for [davit.yedigaryan.pro](https://davit.yedigaryan.pro)
 on-page chat widget. **Caddy + Tailscale (userspace)** in a single Alpine
 Docker image, deployed to Render Free.
 
-> Last redeploy trigger: **2026-05-02 — socat sidecar bridges Caddy →
-> Tailscale HTTP-CONNECT (replaces failed Caddy `proxy_url` attempt) +
-> admin API off + Tailscale 1.96.4 + `keepalive off` on upstream + boot
-> diagnostics D1–D5 + socat-log surfacing**.
+> Last redeploy trigger: **2026-05-03 — socat now uses SOCKS5-CONNECT
+> (was HTTP-CONNECT/`PROXY:`, which silently dropped connections against
+> Tailscale's :1056); socat verbosity bumped to `-d -d`. Earlier:
+> sidecar replaced Caddy `proxy_url`; admin API off; Tailscale 1.96.4;
+> `keepalive off` on upstream; boot diagnostics D1–D5 + socat-log surfacing**.
 >
 > Bump this date and `git push` to force Render to rebuild the container,
 > which mints a fresh Tailscale identity (new `100.x.y.z` IP) on boot.
