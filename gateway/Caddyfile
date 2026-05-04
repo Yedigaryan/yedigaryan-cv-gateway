@@ -77,6 +77,19 @@
             # instead of waiting for response buffering thresholds.
             flush_interval -1
 
+            # Strip CORS headers Ollama emits when OLLAMA_ORIGINS=* is
+            # set on the laptop — we set them ourselves in the global
+            # header{} block above. Forwarding upstream's copy results
+            # in duplicate `Access-Control-Allow-Origin` headers, which
+            # Chrome rejects as a CORS violation (the response shows
+            # 200 OK in DevTools but the body never reaches JS).
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Methods
+            header_down -Access-Control-Allow-Headers
+            header_down -Access-Control-Allow-Credentials
+            header_down -Access-Control-Max-Age
+            header_down -Access-Control-Expose-Headers
+
             transport http {
                 # Ollama's first response after a cold model load can
                 # take 30-120s. Caddy's 30s default would 502 mid-stream.

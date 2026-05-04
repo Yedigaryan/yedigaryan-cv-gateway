@@ -4,13 +4,13 @@ Public-edge LLM gateway for [davit.yedigaryan.pro](https://davit.yedigaryan.pro)
 on-page chat widget. **Caddy + Tailscale (userspace)** in a single Alpine
 Docker image, deployed to Render Free.
 
-> Last redeploy trigger: **2026-05-04 — disable response buffering for
-> SSE: `X-Accel-Buffering: no` header_down + `flush_interval -1`.
-> Without these, intermediaries (Cloudflare in front of Render) can
-> buffer the chat-completion stream and the browser fetch times out
-> before the first token arrives. Earlier: 127.0.0.1 (not `localhost`)
-> for Tailscale's SOCKS5 server; `--experimental` flag; SOCKS port
-> positional in URL; switched from HTTP-CONNECT to SOCKS5; sidecar
+> Last redeploy trigger: **2026-05-04 — strip Ollama-emitted CORS
+> headers in reverse_proxy so we don't double-set `Access-Control-Allow-Origin`
+> (Chrome rejects responses with duplicated ACAO; status appears 200 in
+> DevTools but the body never reaches JS — looks like a successful
+> fetch that yielded nothing). Earlier: disable SSE buffering at edge;
+> 127.0.0.1 for Tailscale SOCKS5; `--experimental` for SOCKS5-CONNECT;
+> SOCKS port positional; switched HTTP-CONNECT → SOCKS5; sidecar
 > replaced Caddy `proxy_url`; admin API off; Tailscale 1.96.4; D1–D5**.
 >
 > Bump this date and `git push` to force Render to rebuild the container,
