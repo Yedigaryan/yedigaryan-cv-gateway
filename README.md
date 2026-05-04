@@ -4,13 +4,13 @@ Public-edge LLM gateway for [davit.yedigaryan.pro](https://davit.yedigaryan.pro)
 on-page chat widget. **Caddy + Tailscale (userspace)** in a single Alpine
 Docker image, deployed to Render Free.
 
-> Last redeploy trigger: **2026-05-04 — force socat to dial 127.0.0.1
-> (not `localhost`) for Tailscale's SOCKS5 server. Container's libc
-> resolves `localhost` to `::1` first, but Tailscale binds IPv4 only;
-> socat doesn't fall back from v6→v4 like curl does, so every forked
-> child died `connect [::1]:1055: Connection refused`. Earlier: added
-> `--experimental` flag for SOCKS5-CONNECT; SOCKS port positional;
-> switched from HTTP-CONNECT to SOCKS5; verbosity `-d -d`; sidecar
+> Last redeploy trigger: **2026-05-04 — disable response buffering for
+> SSE: `X-Accel-Buffering: no` header_down + `flush_interval -1`.
+> Without these, intermediaries (Cloudflare in front of Render) can
+> buffer the chat-completion stream and the browser fetch times out
+> before the first token arrives. Earlier: 127.0.0.1 (not `localhost`)
+> for Tailscale's SOCKS5 server; `--experimental` flag; SOCKS port
+> positional in URL; switched from HTTP-CONNECT to SOCKS5; sidecar
 > replaced Caddy `proxy_url`; admin API off; Tailscale 1.96.4; D1–D5**.
 >
 > Bump this date and `git push` to force Render to rebuild the container,

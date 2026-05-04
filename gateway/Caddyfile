@@ -64,6 +64,19 @@
             header_up Host "localhost:11434"
             header_up X-Forwarded-For {remote_host}
 
+            # Tell intermediaries (Cloudflare in front of Render, any
+            # buffering proxy) to NOT buffer the SSE response. Without
+            # these the streaming response can be held back until enough
+            # bytes accumulate, then released in one shot — which the
+            # browser interprets as a stalled stream and the fetch errors
+            # out before the first byte arrives. `X-Accel-Buffering: no`
+            # is the de-facto signal honored by nginx/Cloudflare/Render.
+            header_down X-Accel-Buffering no
+
+            # Flush each chunk to the client as it arrives from upstream
+            # instead of waiting for response buffering thresholds.
+            flush_interval -1
+
             transport http {
                 # Ollama's first response after a cold model load can
                 # take 30-120s. Caddy's 30s default would 502 mid-stream.
