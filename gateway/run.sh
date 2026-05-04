@@ -72,9 +72,14 @@ export NO_PROXY=localhost,127.0.0.1
 # every connection accept + tunnel result, not just fatal errors.
 if [ -n "$LLM_BACKEND" ]; then
     log "Starting socat: localhost:18080 -> SOCKS5 (localhost:1055) -> $LLM_BACKEND ..."
+    # SOCKS5-CONNECT address takes FOUR positional values:
+    #   SOCKS5-CONNECT:<socks-server>:<socks-port>:<target-host>:<target-port>
+    # The socksport= option is SOCKS4/4A-only — using it on SOCKS5-CONNECT
+    # makes each forked child die at parse time with:
+    #   parseopts_table(): option "socksport" not supported with this address type
     socat -d -d -lf /tmp/socat.log \
         "TCP-LISTEN:18080,fork,reuseaddr,bind=127.0.0.1" \
-        "SOCKS5-CONNECT:localhost:${LLM_BACKEND%%:*}:${LLM_BACKEND##*:},socksport=1055" &
+        "SOCKS5-CONNECT:localhost:1055:${LLM_BACKEND%%:*}:${LLM_BACKEND##*:}" &
     sleep 1
 fi
 
