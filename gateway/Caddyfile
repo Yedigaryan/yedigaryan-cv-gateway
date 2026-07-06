@@ -48,6 +48,52 @@
         respond "" 204
     }
 
+    # ------------------------------------------------------------------
+    # Claude-CLI backend (subscription-mode) on the laptop's :11435.
+    #
+    # Routed under /v1/claude/*. `handle_path` strips the /v1/claude
+    # prefix, so the wrapper receives POST /chat/completions (which it
+    # accepts alongside its native /v1/chat/completions path).
+    #
+    # Reaches the laptop via a SECOND socat bridge on :18081 tunneling
+    # to $LLM_BACKEND_CLAUDE (see run.sh). All the streaming / CORS /
+    # timeout considerations that apply to the Ollama block below apply
+    # here identically — the two blocks stay in sync by convention.
+    # ------------------------------------------------------------------
+    handle_path /v1/claude/* {
+        @claudeAuthorized header Authorization "Bearer {$LLM_API_TOKEN}"
+        handle @claudeAuthorized {
+            reverse_proxy localhost:18081 {
+                header_up Host "localhost:11435"
+                header_up X-Forwarded-For {remote_host}
+
+                header_down X-Accel-Buffering no
+                flush_interval -1
+
+                # Strip any CORS the wrapper emits — we set them
+                # globally above; duplicates trip Chrome's CORS check.
+                header_down -Access-Control-Allow-Origin
+                header_down -Access-Control-Allow-Methods
+                header_down -Access-Control-Allow-Headers
+                header_down -Access-Control-Allow-Credentials
+                header_down -Access-Control-Max-Age
+                header_down -Access-Control-Expose-Headers
+
+                transport http {
+                    # Claude first-token latency is usually <5 s but a
+                    # long generation can stream for a minute or more.
+                    read_timeout 300s
+                    write_timeout 300s
+                    dial_timeout 10s
+                    keepalive off
+                }
+            }
+        }
+        handle {
+            respond "Unauthorized" 401 { close }
+        }
+    }
+
     # Authenticated traffic flows through the Tailscale tunnel to the
     # laptop running Ollama at $LLM_BACKEND (e.g. 100.x.y.z:11434).
     @authorized header Authorization "Bearer {$LLM_API_TOKEN}"

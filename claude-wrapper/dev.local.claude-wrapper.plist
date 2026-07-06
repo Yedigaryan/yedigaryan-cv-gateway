@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>dev.local.claude-wrapper</string>
+
+    <!-- IMPORTANT: fill in the two placeholders below before loading:
+         - REPLACE_NODE_BIN: absolute path to node (e.g. /opt/homebrew/bin/node)
+         - REPLACE_WRAPPER_DIR: absolute path to this claude-wrapper directory
+                                (e.g. /Users/davidyedigaryan/WebstormProjects/
+                                davit-yedigaryan-cv/gateway/claude-wrapper)
+         - REPLACE_TOKEN: same value as $LLM_API_TOKEN on Render
+    -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>REPLACE_NODE_BIN</string>
+        <string>REPLACE_WRAPPER_DIR/server.mjs</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- Bind on 0.0.0.0 so Tailscale's utun* interface can reach it
+             — same reasoning as OLLAMA_HOST=0.0.0.0 in MEMORY.md §5.
+             The Render gateway dials this via socat→Tailscale SOCKS5. -->
+        <key>HOST</key>
+        <string>0.0.0.0</string>
+        <key>PORT</key>
+        <string>11435</string>
+        <key>LLM_API_TOKEN</key>
+        <string>REPLACE_TOKEN</string>
+
+        <!-- Optional overrides: -->
+        <!-- <key>CLAUDE_BIN</key><string>/Users/you/.local/bin/claude</string> -->
+        <!-- <key>CLAUDE_MODEL</key><string>claude-sonnet-4-5</string> -->
+        <!-- <key>MAX_INFLIGHT</key><string>2</string> -->
+
+        <!-- Preserve PATH so the `claude` CLI is discoverable if
+             CLAUDE_BIN is not set explicitly. -->
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/claude-wrapper.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/claude-wrapper.err.log</string>
+
+    <!-- Restart with a small backoff if it crashes rather than
+         hot-looping. -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+</dict>
+</plist>

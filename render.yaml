@@ -30,7 +30,9 @@ services:
         sync: false
       - key: LLM_BACKEND # "<MacBook tailnet IP>:11434" — Ollama default
         sync: false
-      - key: LLM_API_TOKEN # `openssl rand -hex 32`
+      - key: LLM_BACKEND_CLAUDE # "<MacBook tailnet IP>:11435" — claude-wrapper (subscription-mode). Optional; leave unset to disable the second bridge.
+        sync: false
+      - key: LLM_API_TOKEN # `openssl rand -hex 32` — shared by both backends
         sync: false
       # ----- non-secret -----
       - key: PORT

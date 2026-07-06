@@ -70,6 +70,17 @@ export NO_PROXY=localhost,127.0.0.1
 #
 # `-d -d` raises socat to info-level logging so /tmp/socat.log captures
 # every connection accept + tunnel result, not just fatal errors.
+if [ -n "$LLM_BACKEND_CLAUDE" ]; then
+    log "Starting socat: localhost:18081 -> SOCKS5 (127.0.0.1:1055) -> $LLM_BACKEND_CLAUDE ..."
+    # Second bridge — same shape as the Ollama one below. See the long
+    # comment there for why every option is what it is; the two must
+    # stay in sync.
+    socat -d -d --experimental -lf /tmp/socat-claude.log \
+        "TCP-LISTEN:18081,fork,reuseaddr,bind=127.0.0.1" \
+        "SOCKS5-CONNECT:127.0.0.1:1055:${LLM_BACKEND_CLAUDE%%:*}:${LLM_BACKEND_CLAUDE##*:}" &
+    sleep 1
+fi
+
 if [ -n "$LLM_BACKEND" ]; then
     log "Starting socat: localhost:18080 -> SOCKS5 (127.0.0.1:1055) -> $LLM_BACKEND ..."
     # SOCKS5-CONNECT address takes FOUR positional values:
@@ -135,6 +146,17 @@ if [ -n "$LLM_BACKEND" ]; then
         || log "    (no socat log yet)"
 else
     log "(skipping D1-D5 — LLM_BACKEND not set in env)"
+fi
+
+if [ -n "$LLM_BACKEND_CLAUDE" ]; then
+    log "D6: curl /health on claude-wrapper via socat bridge (localhost:18081) ..."
+    curl --max-time 8 -sS -o /dev/null \
+         -w "    -> HTTP %{http_code} in %{time_total}s\n" \
+         "http://localhost:18081/health" \
+         || log "    -> claude-wrapper /health curl failed"
+    log "socat-claude log so far:"
+    [ -f /tmp/socat-claude.log ] && tail -n 10 /tmp/socat-claude.log | sed 's/^/    /' \
+        || log "    (no socat-claude log yet)"
 fi
 log "--- end diagnostics ---"
 
