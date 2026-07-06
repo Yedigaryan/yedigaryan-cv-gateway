@@ -90,7 +90,9 @@
             }
         }
         handle {
-            respond "Unauthorized" 401 { close }
+            respond "Unauthorized" 401 {
+                close
+            }
         }
     }
 
